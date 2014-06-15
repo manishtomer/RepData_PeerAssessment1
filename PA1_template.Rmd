@@ -3,18 +3,103 @@
 
 ## Loading and preprocessing the data
 
+```{r read, echo=T}
+
+activdata<-read.csv("activity.csv", colClasses = c("numeric", "Date", "numeric"))
+head(activdata)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r meand, echo=T, fig.height=4}
+library(data.table)
+activtable<-data.table(activdata)
+plotdata<-na.omit(activtable[,sum(steps), by = "date"])
+hist(plotdata$V1)
+meandata<-mean(plotdata$V1, na.rm=T)
+meddata<-median(plotdata$V1, na.rm=T)
+print(meandata)
+print(meddata)
 
-
+```
 
 ## What is the average daily activity pattern?
+```{r avgd, echo=T, fig.height=4}
+cleandata<-na.omit(activtable)
+avgdata<-cleandata[,mean(steps), by = "interval"]
+plot(avgdata$interval,avgdata$V1, type ="l")
+m<-max(avgdata$V1)
+maximumd<-subset(avgdata, avgdata$V1 == m) 
+print(maximumd)
 
-
-
+```
 ## Imputing missing values
 
+```{r miss, echo=T, warning =FALSE}
 
+activdata<-read.csv("activity.csv", colClasses = c("numeric", "Date", "numeric"))
+nasum<-sum(is.na(activdata))
+print(nasum)
+
+
+activdata<-read.csv("activity.csv", colClasses = c("numeric", "Date", "numeric"))
+library(zoo)
+fulltable<-activdata
+fulltable[1:10,1]<-0
+z<-zoo(fulltable[,1], as.Date(fulltable$date), fulltable$interval)
+
+w<-weekdays(fulltable$date)
+
+
+fulltable<-na.aggregate(z, format, "%d", FUN = mean, na.rm=T)
+fulltab<-as.data.frame(fulltable)
+activtab<-activdata[,2:3]
+finaltab<-cbind(fulltab, activtab)
+colnames(finaltab)<-c("steps", "date", "interval")
+
+
+library(data.table)
+activq<-data.table(finaltab)
+plotq<-na.omit(activq[,sum(steps), by = "date"])
+hist(plotq$V1)
+meanq<-mean(plotq$V1, na.rm=T)
+medq<-median(plotq$V1, na.rm=T)
+print(meanq)
+print(medq)
+
+```
+### The value after repalcing NA are lower than earlier as some zeros are included in overall mean to lower the mean and median
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r week, echo=T}
+
+p<-nrow(finaltab)
+
+
+for (i in 1:p){
+  
+if(weekdays(finaltab[i,2]) == "Saturday"){
+  
+finaltab[i,4]<-"weekend"
+}
+else{
+  if(weekdays(finaltab[i,2]) == "Sunday"){
+    finaltab[i,4]<-"weekend"
+    }
+  else{
+finaltab[i,4]<-"weekday"
+}
+}
+}
+
+library(data.table)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)
+finalq<-data.table(finaltab)
+plotq<-finalq[,mean(steps), by = "interval,V4"]
+f<-ggplot(plotq) + facet_grid(~V4, as.table =T) + geom_line(aes(x=interval, y=V1, group = V4))
+grid.arrange(f, nrow=2)
+
+```
